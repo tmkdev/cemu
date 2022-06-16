@@ -1,0 +1,104 @@
+Play Forwards to Reverse Program
+
+F283D
+E71C
+C305D
+3CB
+
+Reverse to Fowards
+F283D
+E71F
+4309CD
+3CB
+
+
+Playing status 
+Forwards Dolby
+C309C4 
+C309D
+Reverse Dolby
+C305C4
+C305D
+
+
+
+
+Eject Sequence
+F2823
+3CB
+39C4
+431082
+2F
+3015
+70D
+C04
+31082
+C04
+E6F
+30C43 - No tape in deck?
+
+Insert Sequence Dolby
+C31082
+C3108B
+C07
+70E
+C3108B
+C07
+30C602
+C064
+39B82
+C075
+BF95
+E71F - Play Command
+4309D
+39B82
+309D
+
+Insert Sequence No Dolby
+
+Play from FM Dolby
+E71F - Play Forwards
+10C26
+1B82
+4309D (309D) 
+39B82
+309D
+
+Play Reverse From FM Dolby
+E71C - Play Reverse
+30C16
+1B82
+4305D
+39B82
+305D
+
+Fast Forwards 
+E715
+10C68A
+301C
+
+End Fast Forward
+E71C
+30C602
+305D
+
+Reverse 
+E716
+30C692
+301C
+
+
+Cassette to FM Dolby (Same Both Directions)
+E72 - Stop Command
+30C075
+F
+30C064
+E6F
+
+
+
+
+
+
+
+

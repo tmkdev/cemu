@@ -1,0 +1,24 @@
+Load:
+
+Cassette Feedback load
+30C07 (30C02) Non Dolby
+30C07
+
+
+Motor Statuses 
+C31082
+C3108B
+C3108B
+30C602
+30C064/30C025 (have Dolby)
+30C075/30C034 (Have Dolby)
+
+Unload: 
+Cassette Feedback 
+30C04
+30C04
+30C04
+30C43
+
+Motor Status
+C31082
