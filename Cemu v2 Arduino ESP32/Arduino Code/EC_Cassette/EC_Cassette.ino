@@ -11,6 +11,14 @@
 
 #include <inttypes.h>
 
+#ifdef ESP32
+// Bluetooth audio support on ESP32-based systems,
+// using an I2S DAC to produce the analog output
+// Download the BT Audio library here:
+// https://github.com/tierneytim/btAudio
+#include <btAudio.h>
+#endif
+
 // Assuming signal inversion in voltage conversion circuit
 // If not using voltage inversion, switch these
 #define ECHIGH      HIGH
@@ -42,6 +50,17 @@ int timeout = 1;
 uint64_t rxpacket = 0;
 int rxpacket_length = 0;
 
+#ifdef ESP32
+// Set the name of the Bluetooth audio device
+btAudio audio = btAudio("GM Stereo BT");
+
+// Pins for the I2S DAC, e.g. https://www.adafruit.com/product/3678
+#define pin_bck  26
+#define pin_ws   27
+#define pin_dout 25
+
+#endif
+
 // Perform initial setup, run unit tests, then insert vitrual cassette
 void setup()
 {
@@ -67,6 +86,14 @@ void setup()
 
     // Tell radio that cassette has been inserted
     insertCassette();
+
+#ifdef ESP32
+    // Stream Bluetooth audio to ESP32
+    audio.begin();
+
+    // Output the received data to the I2S DAC
+    audio.I2S(pin_bck, pin_dout, pin_ws);
+#endif
 }
 
 // ----------- Main program loop -----------
@@ -275,7 +302,11 @@ void processResult(uint64_t packet)
         sendE_C(0x0030C075, 21);
         break;
  
-    case 0x0000E716: // Fast Forwards
+    case 0x0000E716: // Next
+#ifdef ESP32
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
+#endif
         sendE_C(0x0030C692, 21);
         sendE_C(0x000C301C, 19);
         sendE_C(0x0030C703, 21);
@@ -283,7 +314,11 @@ void processResult(uint64_t packet)
         // Call Reverse function here. 
         break;
 
-    case 0x0000E715: // Reverse
+    case 0x0000E715: // Prev
+#ifdef ESP32
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
+#endif
         sendE_C(0x0030C68A, 21);
         sendE_C(0x000C301C, 19);
         sendE_C(0x0030C703, 21);
@@ -291,15 +326,23 @@ void processResult(uint64_t packet)
         break;
     
     case 0x0000E71A: // FFWD
-        sendE_C(0x0030C613, 21);
-        sendE_C(0x000C301C, 19);
-        sendE_C(0x0030C643, 21);
+#ifdef ESP32
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FAST_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FAST_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
+#endif
+        sendE_C(0x0030C613, 21); // ACK
+        sendE_C(0x000C301C, 19); // ?
+        sendE_C(0x0030C643, 21); // Resume playback
         break;
     
     case 0x000039C7: // RRWD
-        sendE_C(0x0030C60B, 21);
-        sendE_C(0x000C301C, 19);
-        sendE_C(0x0030C643, 21);
+#ifdef ESP32
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_REWIND, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_REWIND, ESP_AVRC_PT_CMD_STATE_RELEASED);
+#endif
+        sendE_C(0x0030C60B, 21); // ACK
+        sendE_C(0x000C301C, 19); // ?
+        sendE_C(0x0030C643, 21); // Resume playback
         break;
     
     case 0x0000E71C: // Send the play and the flip..   
@@ -320,6 +363,18 @@ void processResult(uint64_t packet)
         sendE_C(0x0030C075, 21);
         sendE_C(0x0030C064, 21);
         break;
+
+#ifdef ESP32
+    case 0x0000E70B: // Dolby on
+        // Use this as pause command
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_RELEASED);
+
+    case 0x0000E707: // Doldy off
+        // Use this as resume command
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PLAY, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PLAY, ESP_AVRC_PT_CMD_STATE_RELEASED);
+#endif
 
     default: 
         // Packet not handled, ignore
