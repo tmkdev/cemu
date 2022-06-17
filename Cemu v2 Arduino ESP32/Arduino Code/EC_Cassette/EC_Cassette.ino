@@ -269,11 +269,6 @@ void processResult(uint64_t packet)
     
     // Case Cold Start
     case 0x0000E70E: // Theres a tape dear liza.. 
-        sendE_C(0x0030C602, 21);
-        sendE_C(0x0030C064, 21);
-        sendE_C(0x0030C075, 21);
-        break;
-  
     case 0x0000E70D: // Theres a tape dear liza.. 
         sendE_C(0x0030C602, 21);
         sendE_C(0x0030C064, 21);
