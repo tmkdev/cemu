@@ -1,6 +1,11 @@
-# cemu
-GM E&amp;C bus cassette deck emulator
+# GM E&amp;C bus cassette deck emulator
 
-Designed and tested for a 1997 Camaro CD headunit. Emulates a cassette deck for aux in.
+Original v0.1 version designed and tested for a 1997 Camaro CD headunit, and emulates a cassette deck for aux in.
 
-This is just a dump of all the project files I had when I built this interface back in the day..
+Updated v2 version includes:
+
+ - Error correction
+ - Better logging
+ - Debug button function
+ - [Soon!] Will support Bluetooth audio on ESP32 boards via I2S
+
