@@ -75,7 +75,7 @@ void loop()
     // ----------- Debug button 1 -----------
     if (digitalRead(button1Pin) == 0)
     {
-        button1State = 100;
+        button1State = 5;
     }
     else if (button1State > 1)
     {
@@ -94,7 +94,7 @@ void loop()
     // ----------- Debug button 2 -----------
     if (digitalRead(button2Pin) == 0)
     {
-        button2State = 100;
+        button2State = 5;
     }
     else if (button2State > 1)
     {
