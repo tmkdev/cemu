@@ -36,11 +36,17 @@
 #define PulseZERO   111
 #define PulseONE    667
 
+#ifdef ESP32
+#define EC_Rx       19 // Arduino pin for recieving
+#define EC_Tx       22 // Arduino pin for transmission
+#define button1Pin  34 // Arduino pin for debug button
+#define button2Pin  35 // Arduino pin for debug button
+#else
 #define EC_Rx       5 // Arduino pin for recieving
 #define EC_Tx       3 // Arduino pin for transmission
-
 #define button1Pin  2 // Arduino pin for debug button
 #define button2Pin  7 // Arduino pin for debug button
+#endif
 
 int button1State = 0;
 int button2State = 0;
@@ -58,6 +64,10 @@ btAudio audio = btAudio("GM Stereo BT");
 #define pin_bck  26
 #define pin_ws   27
 #define pin_dout 25
+
+// We receive the prev/next commands twice when pressing once, 
+// so only take actions on every other event.
+int dupeCatch = 0;
 
 #endif
 
@@ -84,16 +94,20 @@ void setup()
     // Run unit testing
     unitTestErrorCorrection();
 
-    // Tell radio that cassette has been inserted
-    insertCassette();
-
 #ifdef ESP32
     // Stream Bluetooth audio to ESP32
     audio.begin();
 
     // Output the received data to the I2S DAC
     audio.I2S(pin_bck, pin_dout, pin_ws);
+
+    // Delay before we begin bitbanging, to minimize the
+    // chance of Bluetooth stuff interferring with timing.
+    delay(500);
 #endif
+
+    // Tell radio that cassette has been inserted
+    insertCassette();
 }
 
 // ----------- Main program loop -----------
@@ -304,8 +318,16 @@ void processResult(uint64_t packet)
  
     case 0x0000E716: // Next
 #ifdef ESP32
-        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
-        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
+        if (dupeCatch == 1)
+        {
+            dupeCatch = 0;
+        }
+        else
+        {
+            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
+            dupeCatch = 1;
+        }
 #endif
         sendE_C(0x0030C692, 21);
         sendE_C(0x000C301C, 19);
@@ -316,8 +338,16 @@ void processResult(uint64_t packet)
 
     case 0x0000E715: // Prev
 #ifdef ESP32
-        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
-        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
+        if (dupeCatch == 1)
+        {
+            dupeCatch = 0;
+        }
+        else
+        {
+            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
+            dupeCatch = 1;
+        }
 #endif
         sendE_C(0x0030C68A, 21);
         sendE_C(0x000C301C, 19);
@@ -369,11 +399,13 @@ void processResult(uint64_t packet)
         // Use this as pause command
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_RELEASED);
+        break;
 
-    case 0x0000E707: // Doldy off
+    case 0x0000E707: // Dolby off
         // Use this as resume command
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PLAY, ESP_AVRC_PT_CMD_STATE_PRESSED);
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PLAY, ESP_AVRC_PT_CMD_STATE_RELEASED);
+        break;
 #endif
 
     default: 
@@ -405,6 +437,13 @@ int sendE_C(uint64_t packet, int length)
 
     if (returnVal == TXOK)  // We have silence. Let er rip off the bits to the bus.
     {
+        #ifdef ESP32
+        // Make sending the packet a critical section, to prevent
+        // interference from other processes messing up the timing.
+        portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
+        taskENTER_CRITICAL(&myMutex);
+        #endif
+
         for (int i = length; i >=0; i--)
         {
             if (bitRead(packet, i) == 1 ) 
@@ -423,6 +462,12 @@ int sendE_C(uint64_t packet, int length)
                 delayMicroseconds(PulseLENGTH - PulseZERO); 
             }
         }
+
+        #ifdef ESP32
+        // Packet sending complete, exit critical section.
+        taskEXIT_CRITICAL(&myMutex);
+        #endif
+
         Serial.write("Sent packet:      ");
         printPacket(packet, length+1);
     }
