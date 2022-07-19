@@ -4,8 +4,7 @@ Original v0.1 version designed and tested for a 1997 Camaro CD headunit, and emu
 
 Updated v2 version includes:
 
+ - Bluetooth audio on ESP32 boards via I2S
  - Error correction
  - Better logging
  - Debug button function
- - [Soon!] Will support Bluetooth audio on ESP32 boards via I2S
-

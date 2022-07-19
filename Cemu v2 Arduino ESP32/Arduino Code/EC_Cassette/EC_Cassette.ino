@@ -4,7 +4,7 @@
 // 2022: QwertyChouskie revamp
 // - Better logging
 // - Error correction
-// - Bluetooth functionality (soon!)
+// - Bluetooth functionality
 // USE AT YOUR OWN RISK. I AM NOT RESPONSIBLE FOR YOU ACTIONS.
 // NO WARRANTY IMPLIED
 //
@@ -17,6 +17,7 @@
 // Download the BT Audio library here:
 // https://github.com/tierneytim/btAudio
 #include <btAudio.h>
+#include <neotimer.h>
 #endif
 
 // Assuming signal inversion in voltage conversion circuit
@@ -50,7 +51,11 @@
 
 int button1State = 0;
 int button2State = 0;
+bool radioOn = 1;
 bool cassetteLoaded = 0;
+bool btAudioActive = 0;
+
+Neotimer disconnect_timer = Neotimer(1000);
 
 int timeout = 1;
 uint64_t rxpacket = 0;
@@ -92,11 +97,15 @@ void setup()
     Serial.begin(115200);
 
     // Run unit testing
-    unitTestErrorCorrection();
+    //unitTestErrorCorrection();
 
 #ifdef ESP32
     // Stream Bluetooth audio to ESP32
     audio.begin();
+    btAudioActive = true;
+
+    // Re-connect to last connected device
+    audio.reconnect();
 
     // Output the received data to the I2S DAC
     audio.I2S(pin_bck, pin_dout, pin_ws);
@@ -113,6 +122,13 @@ void setup()
 // ----------- Main program loop -----------
 void loop()
 {
+    if (disconnect_timer.done()) {
+        audio.disconnect();
+        btAudioActive = false;
+        disconnect_timer.stop();
+        disconnect_timer.reset();
+    }
+
     // ----------- Debug button 1 -----------
     if (digitalRead(button1Pin) == 0)
     {
@@ -192,9 +208,6 @@ void loop()
     } 
     else {
         if (timeout == 0) {
-            Serial.write("Recieved packet:  ");
-            printPacket(rxpacket, rxpacket_length);
-
             rxpacket = errorCorrect(rxpacket, rxpacket_length);
             processResult(rxpacket);
 
@@ -208,9 +221,9 @@ void loop()
 // Insert virtual cassette tape
 void insertCassette()
 {
+    cassetteLoaded = 1;
     sendE_C(0x00C31082, 23);
     sendE_C(0x00C3108B, 23);
-    cassetteLoaded = 1;
 }
 
 // Eject virtual cassette tape
@@ -285,12 +298,13 @@ uint64_t errorCorrect(uint64_t packet, int packet_length)
             return 0;
         }
 
-    if (packet != corrected_packet)
-    {
-        Serial.print("Corrected packet: ");
-        printPacket(corrected_packet, packet_length);
-    }
+    //if (packet != corrected_packet)
+    //{
+    //    Serial.print("Corrected packet: ");
+    //    printPacket(corrected_packet, packet_length);
+    //}
 
+    rxpacket_length = packet_length; // FIXME: global vars bad
     return corrected_packet;
 }
 
@@ -298,25 +312,98 @@ uint64_t errorCorrect(uint64_t packet, int packet_length)
 void processResult(uint64_t packet)
 {
     // If virtual cassette is unloaded, don't do anything
-    if (!cassetteLoaded)
-        return;
+    // if (!cassetteLoaded)
+    //     return;
     
     switch (packet) {
-    case 0x0000E704:
+    //case 0x0000E704:
         //Serial.println("IC");
         //delay(50);
         //sendE_C(0x0030C075, 22);
-        break;
+        //break;
     
+    // Seen when:
+    // - radio powered on via button
+    // - ignition turned off
+    case 0x00000E6F: // Radio powered on or ignition turned off
+        Serial.print("Radio powered on or ignition turned off ");
+        printPacket(packet, rxpacket_length);
+        //insertCassette();
+        break;
+
+    case 0x000C2FE4: // Ignition turned off while radio on
+        Serial.println("Ignition turned off while radio on");
+        radioOn = false;
+
+        #ifdef ESP32
+        // Pause playback
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_RELEASED);
+        
+        // Disable Bluetooth
+        disconnect_timer.start();
+        #endif
+
+        break;
+
+    case 0x0000C2FF: // Ignition turned off while radio off
+        Serial.println("Ignition turned off while radio off");
+
+        #ifdef ESP32
+        // Pause playback
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_RELEASED);
+
+        // Disable Bluetooth
+        disconnect_timer.start();
+        #endif
+
+        break;
+
+    // Seen when:
+    // - key to from off to acc
+    // - key from off to on
+    // - radio turned on via button
+    case 0x0030BF95: // Radio powered on
+        Serial.println("Radio powered on");
+        radioOn = true;
+        #ifdef ESP32
+        if (!btAudioActive) {
+            audio.reconnect();
+            btAudioActive = true;
+        }
+        disconnect_timer.stop();
+        disconnect_timer.reset();
+        #endif
+        insertCassette();
+        break;
+
+    // Seen when:
+    // - radio turned off using button
+    // - ignition turn on but radio is off
+    case 0x0030BF84: // Radio powered off
+        Serial.println("Radio powered off");
+        radioOn = false;
+
+        #ifdef ESP32
+        // Pause playback
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_RELEASED);
+        #endif
+
+        break;
+
     // Case Cold Start
     case 0x0000E70E: // Theres a tape dear liza.. 
     case 0x0000E70D: // Theres a tape dear liza.. 
+        Serial.println("Case Cold Start");
         sendE_C(0x0030C602, 21);
         sendE_C(0x0030C064, 21);
         sendE_C(0x0030C075, 21);
         break;
  
     case 0x0000E716: // Next
+        Serial.println("Button pressed: Next");
 #ifdef ESP32
         if (dupeCatch == 1)
         {
@@ -337,6 +424,7 @@ void processResult(uint64_t packet)
         break;
 
     case 0x0000E715: // Prev
+        Serial.println("Button pressed: Previous");
 #ifdef ESP32
         if (dupeCatch == 1)
         {
@@ -355,7 +443,8 @@ void processResult(uint64_t packet)
         sendE_C(0x000C301F, 19);
         break;
     
-    case 0x0000E71A: // FFWD
+    case 0x0000E71A: // Fast Forward
+        Serial.println("Button pressed: Fast Forward");
 #ifdef ESP32
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FAST_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FAST_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
@@ -365,7 +454,8 @@ void processResult(uint64_t packet)
         sendE_C(0x0030C643, 21); // Resume playback
         break;
     
-    case 0x000039C7: // RRWD
+    case 0x000039C7: // Rewind
+        Serial.println("Button pressed: Rewind");
 #ifdef ESP32
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_REWIND, ESP_AVRC_PT_CMD_STATE_PRESSED);
         esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_REWIND, ESP_AVRC_PT_CMD_STATE_RELEASED);
@@ -385,6 +475,9 @@ void processResult(uint64_t packet)
         //sendE_C(0x000C309D, 19);
         break;
 
+    // Seen when:
+    // - key to from off to acc
+    // - key from off to on
     case 0x00039B82:
         sendE_C(0x000C309D, 19);
         break;
@@ -409,7 +502,9 @@ void processResult(uint64_t packet)
 #endif
 
     default: 
-        // Packet not handled, ignore
+        // Packet not handled, just print
+        Serial.print("Unknown packet:   ");
+        printPacket(packet, rxpacket_length);
         break;
     }
 }
@@ -420,6 +515,10 @@ void processResult(uint64_t packet)
  */
 int sendE_C(uint64_t packet, int length) 
 {
+    // If virtual cassette is unloaded, don't do anything
+    if (!cassetteLoaded)
+        return TXTMOUT;
+
     int retryCount = 0;
     int returnVal = TXTMOUT;
 
@@ -479,6 +578,13 @@ int sendE_C(uint64_t packet, int length)
     return returnVal;
 }
 
+// Function to extract k bits from p position (starts at 1)
+// and returns the extracted value as integer
+int bitExtracted(uint64_t number, int k, int p)
+{
+    return (((1 << k) - 1) & (number >> (p - 1)));
+}
+
 // Print packet data, including Hex and binary representations, and packet length
 void printPacket(uint64_t packet, int length)
 {
@@ -492,7 +598,22 @@ void printPacket(uint64_t packet, int length)
     sprintf(s2, "%08" PRIX32, lsb);
     Serial.print(s1); Serial.print(s2);
 
-    Serial.write("  ");
+    uint8_t priority = bitExtracted(packet, 2, length-2);
+    uint8_t address  = bitExtracted(packet, 6, length-8);
+    Serial.write("   "); Serial.print(priority);
+    Serial.write("-");   Serial.print(address);
+    uint8_t data1 = 0, data2 = 0;
+    if (length <= 18) {
+        data1 = bitExtracted(packet, length-9, 2);
+        Serial.write("-");   Serial.print(data1);
+    } else {
+        data1 = bitExtracted(packet, 8, length-16);
+        data2 = bitExtracted(packet, length-9-8, 2);
+        Serial.write("-");   Serial.print(data1);
+        Serial.write("-");   Serial.print(data2);
+    }
+
+    Serial.write("   ");
     Serial.print(msb, BIN);
     Serial.write(" ");
     Serial.print(lsb, BIN);
