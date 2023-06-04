@@ -110,6 +110,9 @@ void setup()
     // Output the received data to the I2S DAC
     audio.I2S(pin_bck, pin_dout, pin_ws);
 
+    // Set max volume to fix distortion/popping issue
+    audio.volume(0.5);
+
     // Delay before we begin bitbanging, to minimize the
     // chance of Bluetooth stuff interferring with timing.
     delay(500);
