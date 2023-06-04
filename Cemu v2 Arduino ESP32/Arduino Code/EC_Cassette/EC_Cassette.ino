@@ -70,9 +70,9 @@ btAudio audio = btAudio("GM Stereo BT");
 #define pin_ws   27
 #define pin_dout 25
 
-// We receive the prev/next commands twice when pressing once, 
-// so only take actions on every other event.
-int dupeCatch = 0;
+// We receive the prev/next commands twice or more when pressing once, 
+// so don't take action if previous action was less than 2 seconds ago.
+Neotimer dupeCatch = Neotimer(2000);
 
 #endif
 
@@ -112,6 +112,9 @@ void setup()
 
     // Set max volume to fix distortion/popping issue
     audio.volume(0.5);
+
+    // Start timer for catching duplicate prev/next commands
+    dupeCatch.start();
 
     // Delay before we begin bitbanging, to minimize the
     // chance of Bluetooth stuff interferring with timing.
@@ -407,18 +410,17 @@ void processResult(uint64_t packet)
  
     case 0x0000E716: // Next
         Serial.println("Button pressed: Next");
+
 #ifdef ESP32
-        if (dupeCatch == 1)
-        {
-            dupeCatch = 0;
-        }
-        else
+        if (dupeCatch.done())
         {
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
-            dupeCatch = 1;
+            dupeCatch.reset();
+            dupeCatch.start();
         }
 #endif
+
         sendE_C(0x0030C692, 21);
         sendE_C(0x000C301C, 19);
         sendE_C(0x0030C703, 21);
@@ -428,18 +430,17 @@ void processResult(uint64_t packet)
 
     case 0x0000E715: // Prev
         Serial.println("Button pressed: Previous");
+
 #ifdef ESP32
-        if (dupeCatch == 1)
-        {
-            dupeCatch = 0;
-        }
-        else
+        if (dupeCatch.done())
         {
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
-            dupeCatch = 1;
+            dupeCatch.reset();
+            dupeCatch.start();
         }
 #endif
+
         sendE_C(0x0030C68A, 21);
         sendE_C(0x000C301C, 19);
         sendE_C(0x0030C703, 21);
