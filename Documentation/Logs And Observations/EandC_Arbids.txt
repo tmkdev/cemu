@@ -1,0 +1,49 @@
+0x00000354 - Initial Startup - First Command Sent always on powerup
+0x00000E6F - Ack?
+0x0000026F - ?
+0x0000C2FF - Cd In on powerup 
+0x000002FF - CD In Ignition off 
+0x000042FF - Radio off Ignition off
+0x00002FE4 - Radio on Ignition off 
+0x0000E704 - Cassette Tape Poll - Send when Aux pressed
+	0x00000C43 - Cassette Deck Response
+	0x00010C43 - Casette Desk Repsonce to E704
+
+0x000019C4 - CD In startup sequence
+0x000039C4 - No CD in startup sequence
+0x0030BF84 - Radio off
+0x0030BF95 - Radio On 
+0x00039B8D - CD Playing
+
+(Rev direction in brackets. Must be encoded in status?)
+E707 - Turn off Dolby
+308C (304CC) - Response Dolby off
+E70B - Turn on Dolby
+309D (305CD) - Response Dolby on 
+
+Commands to Cassette	12345678901*--------
+E704 - Poll 		1110011100000100
+	(2)
+*10C43  No Cassette
+*30C43  No Cassette
+
+
+
+E707 - Dolby Off	1110011100000111
+E70B - Dolby On 	1110011100001011
+E71F - Play Forwards	1110011100011111
+E71C - Play Reverse 	1110011100011100
+E715 - Fast Fowards	1110011100010101
+E716 - Fast Reverse     1110011100010110
+E72 - Stop Command	111001110010
+
+Cassette Arrow Status
+301C - Flashing F Arrow	11000000011100
+305D - Play Rev		11000001011101
+309D - Play Fwd		11000010011101
+3015 - Eject		11000000010101
+
+
+
+
+

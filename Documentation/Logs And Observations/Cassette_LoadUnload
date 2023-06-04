@@ -1,0 +1,48 @@
+Tape in - FM mode Ign off
+R - E6F                                                                          
+R - E72                                                                          
+R - C2FE4                                                                        
+C - 30C064 
+
+Tape in - FM mode Ign on 
+C - 30C602                                                      
+R - E704                                                        
+C - 30C602  (Tape?)  110000011000000010                                                   
+R - E6F                                                         
+R - 30BF95                                                      
+R - E6F   
+
+
+Ing on after Cassette plugged back in with Tape in
+C - C31082
+R - E70D
+C - C31082
+C?- 30C04
+6704
+C - C31082
+R - E70D
+C - C31082
+R - E6F
+? - 30C04
+R - 30BF95
+? - C3108B
+? - 30C07
+R - E70E
+C?- C3108B
+? - 30C07
+R - E6F                                                                             
+C - 30C602                                                                          
+C - 30C064                                                                          
+C - 30BF95   
+
+Ing off no tape 
+R - E6F
+R - C2FE4
+
+Ing on no tape 
+R - E704
+C - 30C43 (No tape) 	110000110001000011
+R - E6F
+R - 30BF95
+R - E6F
+

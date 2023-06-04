@@ -1,0 +1,88 @@
+Command Feedback Packet (DD Direction) d=dolby
+            ADDSdC P
+11000011000 010011 0   (FD) 30C26 (Result from E71F)
+11000011000 001011 0   (RD) 30C16 (Result from E71C)
+11000011000 010001 1   (F)  30C23 (Result from E71F)
+11000011000 001001 1   (R)  30C13 (Result from E71C)
+11000011000 000010 0   Ejecting 30C04
+11000011000 100001 1   Ejected  30C43 (Empty Deck) 
+11000011000 000011 1   Loading of tape 30C07 Loading 
+11000011000 000001 0   Loading of Tape 30C02 Non Dolby 
+            ADDSdCUV P 
+11000011000 01001110 1 (FDolby) C309D (Used for playing indicator)
+11000011000 00101110 1 (RDdolby) C305D (Used as playing indicator)
+11000011000 00001110 0 (FF or Rew Seeking) C301C Seeking. 
+11000011000 01000110 0 (F) C308C
+11000011000 00100110 0 (R) C304C 
+11000011000 00001111 1 End of Seek F/R C301F (Stopped?) 
+11000011000 00001010 1 Reverse Play Eject
+11000011000 00000111 0 Seen going from Fwd to Rev auto C300E Non Dolby (Stopped C301F) 
+11000011000 00000010 0 C3004 Reverse Dolby Eject 
+
+            ADDSdCUVWX
+11000011000 1101000101 0 (Command result from E715) 30C68A
+11000011000 1101001001 0 (Command result from E716) 30C692
+11000011000 1100000001 0 (Command Result from FF returning to play) 30C602 (Powers up with cassette in)
+11000011000 0000111010 1 (Move to play) 30C075
+11000011000 0000011010 0 (Ready to play Non Dolby) 30C043 
+11000011000 0000110010 0 (Rest State) 30C064 
+11000011000 0000010010 1 (Non Dolby rest state) 30C064 
+11000011000 1110000001 1 (Seeking Fowards) 30C703 
+11000011000 1100100001 1 (End of tape flip ) 30C643
+
+            ADDSdCUVWXYZ
+11000011000 001011100110 1 (Reverse Dolby Silence?) C305CD
+11000011000 001011100010 0 (Reverse Dolby Silence?) C305C4
+11000011000 010011100010 0 (Forward Dolby Silence) C309C4
+11000011000 010011100110 1 (Forward DOlby Silence) C309CD 
+11000011000 010001100010 1 (Forward No Dolby Silence) C308C5
+11000011000 100001000001 0 (Ejecting/Loading) C31082
+11000011000 100001000101 1 (Next in sequence C31082->C3108B) C3108B
+
+A = Mute Audio?
+DD = Direction* 
+	10 Forwards
+	01 Reverse
+	00 None
+	11 Seeking Forwards 
+
+S = Seek*
+d = Dolby*
+C = Cassette Status (1 in) 
+V
+W
+X
+Y
+Z = Loading 
+
+
+
+Ack? (39B82)     P 
+111001101110000010
+
+11110010100000111101  (Program Pressed on deck) F283D
+11110010100000100011  (Eject pressed on deck) F2823 
+1111001011            (Post Program set)
+
+
+
+Radio Commands
+              pP
+111001110010	     Stop Playing   E72
+1110011100001101     Eject E70D
+1110011100001110     Loading Tape? E70E - Radio Ack that there is a tape in there. 
+1110011100011111     (Play F) E71F
+1110011100011100     (Play R) E71C
+1110011100001011     (Enable Dolby) E70B
+1110011100000111     (Disable Dolby) E707
+1110011100000100     (Poll for Cassette)  E704
+1110011100010101     (Seek Rewind) 	E715
+1110011100010110     (Seek Forward) 	E716
+11100111000100       (Eject?) 		39C4
+
+
+Parity bit (Even = 1 / Odd = 0)
+
+
+
+
