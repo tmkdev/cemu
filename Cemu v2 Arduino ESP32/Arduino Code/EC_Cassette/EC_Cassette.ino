@@ -70,10 +70,6 @@ btAudio audio = btAudio("GM Stereo BT");
 #define pin_ws   27
 #define pin_dout 25
 
-// We receive the prev/next commands twice or more when pressing once, 
-// so don't take action if previous action was less than 2 seconds ago.
-Neotimer dupeCatch = Neotimer(2000);
-
 #endif
 
 // Perform initial setup, run unit tests, then insert vitrual cassette
@@ -112,9 +108,6 @@ void setup()
 
     // Set max volume to fix distortion/popping issue
     audio.volume(0.5);
-
-    // Start timer for catching duplicate prev/next commands
-    dupeCatch.start();
 
     // Delay before we begin bitbanging, to minimize the
     // chance of Bluetooth stuff interferring with timing.
@@ -412,19 +405,19 @@ void processResult(uint64_t packet)
         Serial.println("Button pressed: Next");
 
 #ifdef ESP32
-        if (dupeCatch.done())
-        {
-            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
-            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
-            dupeCatch.reset();
-            dupeCatch.start();
-        }
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
 #endif
 
-        sendE_C(0x0030C692, 21);
-        sendE_C(0x000C301C, 19);
-        sendE_C(0x0030C703, 21);
-        sendE_C(0x000C301F, 19);
+        // Old handling method
+        //sendE_C(0x0030C692, 21);
+        //sendE_C(0x000C301C, 19);
+        //sendE_C(0x0030C703, 21);
+        //sendE_C(0x000C301F, 19);
+
+        // Seems to work better than the old method.
+        // Message came from case 0x0000E71C, found to work for this case by trial and error.
+        sendE_C(0x0030C643, 21);
         // Call Reverse function here. 
         break;
 
@@ -432,19 +425,19 @@ void processResult(uint64_t packet)
         Serial.println("Button pressed: Previous");
 
 #ifdef ESP32
-        if (dupeCatch.done())
-        {
-            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
-            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
-            dupeCatch.reset();
-            dupeCatch.start();
-        }
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+        esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_RELEASED);
 #endif
 
-        sendE_C(0x0030C68A, 21);
-        sendE_C(0x000C301C, 19);
-        sendE_C(0x0030C703, 21);
-        sendE_C(0x000C301F, 19);
+        // Old handling method
+        //sendE_C(0x0030C68A, 21);
+        //sendE_C(0x000C301C, 19);
+        //sendE_C(0x0030C703, 21);
+        //sendE_C(0x000C301F, 19);
+
+        // Seems to work better than the old method.
+        // Message came from case 0x0000E71C, found to work for this case by trial and error.
+        sendE_C(0x0030C643, 21);
         break;
     
     case 0x0000E71A: // Fast Forward
